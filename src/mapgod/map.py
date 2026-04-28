@@ -31,11 +31,13 @@ class Map:
     def __init__(
         self,
         title: str = "",
+        mode: Literal["static", "interactive"] = "interactive",
         crs: str = "EPSG:4326",
         basemap: str | bool = True,
         figsize: tuple[float, float] = (12, 8),
     ) -> None:
         self.title = title
+        self.mode = mode
         self.crs = crs
         self.basemap = basemap
         self.figsize = figsize
@@ -88,8 +90,9 @@ class Map:
         vectors = [layer for layer in self._layers if isinstance(layer, VectorLayer)]
         return rasters + vectors
 
-    def show(self, backend: Literal["interactive", "static"] = "interactive"):
-        if backend == "interactive":
+    def show(self, backend: Literal["interactive", "static"] | None = None):
+        effective = backend or self.mode
+        if effective == "interactive":
             from mapgod.backends.interactive import render_interactive
 
             return render_interactive(self)
@@ -107,8 +110,12 @@ class Map:
     ) -> Path:
         path = Path(path)
         if backend is None:
-            backend = "interactive" if path.suffix == ".html" else "static"
-        if backend == "interactive":
+            if path.suffix == ".html":
+                backend = "interactive"
+            elif path.suffix != "":
+                backend = "static"
+        effective = backend or self.mode
+        if effective == "interactive":
             from mapgod.backends.interactive import save_interactive
 
             save_interactive(self, path)
@@ -128,4 +135,4 @@ class Map:
     def __repr__(self) -> str:
         n_vec = sum(1 for layer in self._layers if isinstance(layer, VectorLayer))
         n_ras = sum(1 for layer in self._layers if isinstance(layer, RasterLayer))
-        return f"Map(title={self.title!r}, layers={n_vec}V+{n_ras}R, crs={self.crs!r})"
+        return f"Map(title={self.title!r}, mode={self.mode!r}, layers={n_vec}V+{n_ras}R, crs={self.crs!r})"

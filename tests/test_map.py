@@ -36,3 +36,27 @@ def test_sorted_layers_preserves_single_type(sample_raster_wgs84):
     m.add_raster(sample_raster_wgs84)
     assert len(m._sorted_layers()) == 1
     assert m._sorted_layers()[0].kind == "raster"
+
+
+def test_map_mode_default():
+    m = Map()
+    assert m.mode == "interactive"
+
+
+def test_map_mode_static():
+    m = Map(mode="static")
+    assert m.mode == "static"
+
+
+def test_save_html_routes_to_interactive(tmp_path):
+    m = Map(mode="static")
+    path = tmp_path / "out.html"
+    result = m.save(path)
+    assert result == path
+
+
+def test_save_png_routes_to_static(tmp_path):
+    m = Map(mode="interactive")
+    path = tmp_path / "out.png"
+    result = m.save(path)
+    assert result == path
