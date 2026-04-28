@@ -84,8 +84,8 @@ class Map:
         return self
 
     def _sorted_layers(self) -> list[VectorLayer | RasterLayer]:
-        rasters = [l for l in self._layers if isinstance(l, RasterLayer)]
-        vectors = [l for l in self._layers if isinstance(l, VectorLayer)]
+        rasters = [layer for layer in self._layers if isinstance(layer, RasterLayer)]
+        vectors = [layer for layer in self._layers if isinstance(layer, VectorLayer)]
         return rasters + vectors
 
     def show(self, backend: Literal["interactive", "static"] = "interactive"):
@@ -126,6 +126,6 @@ class Map:
         return merge_bounds(all_bounds) if all_bounds else None
 
     def __repr__(self) -> str:
-        n_vec = sum(1 for l in self._layers if isinstance(l, VectorLayer))
-        n_ras = sum(1 for l in self._layers if isinstance(l, RasterLayer))
+        n_vec = sum(1 for layer in self._layers if isinstance(layer, VectorLayer))
+        n_ras = sum(1 for layer in self._layers if isinstance(layer, RasterLayer))
         return f"Map(title={self.title!r}, layers={n_vec}V+{n_ras}R, crs={self.crs!r})"
