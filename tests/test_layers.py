@@ -13,12 +13,12 @@ def test_raster_layer_class_exists():
 def test_raster_bounds_reprojects_utm_to_wgs84(sample_raster_utm):
     layer = RasterLayer(sample_raster_utm, target_crs="EPSG:4326")
     b = layer.bounds
-    assert b is not None
-    # All four values must be valid WGS-84 degrees, not UTM meters
-    assert -180 <= b[0] <= 180, f"minx out of range: {b[0]}"
-    assert -90  <= b[1] <= 90,  f"miny out of range: {b[1]}"
-    assert -180 <= b[2] <= 180, f"maxx out of range: {b[2]}"
-    assert -90  <= b[3] <= 90,  f"maxy out of range: {b[3]}"
+    # UTM fixture (500_000, 5_400_000, 600_000, 5_500_000) in EPSG:32632
+    # reprojects to approximately (8.57, 48.73, 9.43, 49.62) in WGS-84
+    assert 7.0 <= b[0] <= 10.0, f"minx should be ~8.57°, got {b[0]}"
+    assert 47.0 <= b[1] <= 51.0, f"miny should be ~48.73°, got {b[1]}"
+    assert 7.0 <= b[2] <= 11.0, f"maxx should be ~9.43°, got {b[2]}"
+    assert 48.0 <= b[3] <= 51.0, f"maxy should be ~49.62°, got {b[3]}"
 
 
 def test_raster_bounds_same_crs_unchanged(sample_raster_wgs84):

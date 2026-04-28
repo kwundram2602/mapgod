@@ -122,7 +122,7 @@ class RasterLayer:
             cbar.set_label(self.label)
 
     @property
-    def bounds(self) -> tuple[float, float, float, float] | None:
+    def bounds(self) -> tuple[float, float, float, float]:
         return self._bounds_reprojected
 
     def __repr__(self) -> str:
