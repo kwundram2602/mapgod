@@ -102,3 +102,9 @@ def test_animate_trajectory_saves_gif(tmp_path):
     animate_trajectory(raster, traj, output=output, fps=5)
     assert output.exists()
     assert output.stat().st_size > 0
+
+
+def test_public_exports():
+    import mapgod
+    assert hasattr(mapgod, "plot_trajectory")
+    assert hasattr(mapgod, "animate_trajectory")
