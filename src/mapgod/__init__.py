@@ -1,0 +1,1 @@
+"""mapgod — geospatial plotting utilities."""
