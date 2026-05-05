@@ -71,3 +71,34 @@ def test_plot_trajectory_accepts_existing_ax(tmp_path):
     fig_pre, ax_pre = plt.subplots()
     fig, ax = plot_trajectory(raster, _make_trajectory(), ax=ax_pre)
     assert ax is ax_pre
+
+
+def test_animate_trajectory_returns_funcanimation(tmp_path):
+    from matplotlib.animation import FuncAnimation
+    from mapgod.trajectory import animate_trajectory
+
+    raster = _write_raster(tmp_path)
+    traj = _make_trajectory(id="t1")
+    anim = animate_trajectory(raster, traj)
+    assert isinstance(anim, FuncAnimation)
+
+
+def test_animate_trajectory_list_of_trajectories(tmp_path):
+    from matplotlib.animation import FuncAnimation
+    from mapgod.trajectory import animate_trajectory
+
+    raster = _write_raster(tmp_path)
+    trajs = [_make_trajectory(id="a"), _make_trajectory(id="b")]
+    anim = animate_trajectory(raster, trajs)
+    assert isinstance(anim, FuncAnimation)
+
+
+def test_animate_trajectory_saves_gif(tmp_path):
+    from mapgod.trajectory import animate_trajectory
+
+    raster = _write_raster(tmp_path)
+    traj = _make_trajectory()
+    output = tmp_path / "out.gif"
+    animate_trajectory(raster, traj, output=output, fps=5)
+    assert output.exists()
+    assert output.stat().st_size > 0

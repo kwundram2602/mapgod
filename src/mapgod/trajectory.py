@@ -94,3 +94,90 @@ def plot_trajectory(
     ax.set_xlabel("Easting")
     ax.set_ylabel("Northing")
     return fig, ax
+
+
+def animate_trajectory(
+    raster: Path | str,
+    trajectories: Trajectory | list[Trajectory],
+    *,
+    band: int = 1,
+    cmap: str = "gray",
+    point_style: dict | None = None,
+    line_style: dict | None = None,
+    interval: int = 100,
+    output: Path | str | None = None,
+    figsize: tuple[float, float] = (10, 8),
+    title: str | None = None,
+    fps: int = 10,
+):
+    """Animate one or more trajectories building up over a GeoTIFF raster.
+
+    Each frame reveals one more point. Multiple trajectories run in parallel;
+    shorter ones freeze at their last point. Returns a FuncAnimation object.
+    Saves to .gif (pillow) or .mp4 (ffmpeg) when output is provided.
+    """
+    from matplotlib.animation import FuncAnimation
+    from vecraspy.vector import Trajectory as _Trajectory
+
+    if isinstance(trajectories, _Trajectory):
+        trajectories = [trajectories]
+
+    data, extent, raster_crs = _load_raster(raster, band)
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    valid = data[np.isfinite(data)]
+    vmin = float(np.nanpercentile(valid, 2)) if valid.size > 0 else None
+    vmax = float(np.nanpercentile(valid, 98)) if valid.size > 0 else None
+    ax.imshow(data, cmap=cmap, extent=extent, origin="upper", vmin=vmin, vmax=vmax)
+
+    if title:
+        ax.set_title(title)
+    ax.set_xlabel("Easting")
+    ax.set_ylabel("Northing")
+
+    ls: dict = {"linewidth": 1.5, "alpha": 0.8}
+    ps: dict = {"markersize": 6, "zorder": 5}
+    if line_style:
+        ls.update(line_style)
+    if point_style:
+        ps.update(point_style)
+
+    colors = _color_cycle()
+    all_coords: list[tuple[list[float], list[float]]] = []
+    for traj in trajectories:
+        xs, ys = _reproject_points(traj, raster_crs)
+        all_coords.append((xs, ys))
+
+    n_frames = max(len(c[0]) for c in all_coords)
+
+    # Pre-create one (line, point_marker) artist pair per trajectory.
+    artist_groups = []
+    for i, (xs, ys) in enumerate(all_coords):
+        color = colors[i % len(colors)]
+        (line,) = ax.plot([], [], color=color, **ls)
+        (marker,) = ax.plot([], [], "o", color=color, **ps)
+        artist_groups.append((line, marker, xs, ys))
+
+    def _update(frame: int):
+        updated = []
+        for line, marker, xs, ys in artist_groups:
+            n = min(frame + 1, len(xs))
+            if n >= 2:
+                line.set_data(xs[:n], ys[:n])
+            else:
+                line.set_data([], [])
+            marker.set_data([xs[n - 1]], [ys[n - 1]])
+            updated.extend([line, marker])
+        return updated
+
+    anim = FuncAnimation(fig, _update, frames=n_frames, interval=interval, blit=True)
+
+    if output is not None:
+        output = Path(output)
+        if output.suffix == ".gif":
+            anim.save(output, writer="pillow", fps=fps)
+        else:
+            anim.save(output, fps=fps)
+
+    return anim
