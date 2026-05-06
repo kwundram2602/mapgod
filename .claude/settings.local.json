@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Skill(uv-project)",
+      "Skill(uv-project:*)"
+    ]
+  }
+}

@@ -10,21 +10,38 @@ import numpy as np
 import rasterio
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from rasterio.enums import Resampling
 
 if TYPE_CHECKING:
     from vecraspy.vector import Trajectory
 
 
 def _load_raster(
-    path: Path | str, band: int
+    path: Path | str,
+    band: int,
+    *,
+    max_dim: int | None = None,
+    dtype: np.dtype | str | None = np.float32,
 ) -> tuple[np.ndarray, list[float], Any]:
     """Return (data_2d, extent, raster_crs) from a GeoTIFF."""
     with rasterio.open(path) as src:
-        raw = src.read(band).astype(float)
+        read_kwargs: dict[str, Any] = {}
+        if max_dim is not None:
+            scale = min(max_dim / src.width, max_dim / src.height, 1.0)
+            if scale < 1.0:
+                out_height = max(1, int(src.height * scale))
+                out_width = max(1, int(src.width * scale))
+                read_kwargs["out_shape"] = (out_height, out_width)
+                read_kwargs["resampling"] = Resampling.bilinear
+        if dtype is not None:
+            read_kwargs["out_dtype"] = np.dtype(dtype)
+        raw = src.read(band, **read_kwargs)
         nodata = src.nodata
         bounds = src.bounds
         crs = src.crs
     if nodata is not None:
+        if not np.issubdtype(raw.dtype, np.floating):
+            raw = raw.astype(np.float32)
         raw = np.where(raw == nodata, np.nan, raw)
     extent = [bounds.left, bounds.right, bounds.bottom, bounds.top]
     return raw, extent, crs
@@ -50,6 +67,8 @@ def plot_trajectory(
     *,
     band: int = 1,
     cmap: str = "gray",
+    raster_max_dim: int | None = 4096,
+    raster_dtype: np.dtype | str | None = np.float32,
     point_style: dict | None = None,
     line_style: dict | None = None,
     ax: Axes | None = None,
@@ -62,7 +81,12 @@ def plot_trajectory(
     if isinstance(trajectories, _Trajectory):
         trajectories = [trajectories]
 
-    data, extent, raster_crs = _load_raster(raster, band)
+    data, extent, raster_crs = _load_raster(
+        raster,
+        band,
+        max_dim=raster_max_dim,
+        dtype=raster_dtype,
+    )
 
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -102,13 +126,16 @@ def animate_trajectory(
     *,
     band: int = 1,
     cmap: str = "gray",
+    raster_max_dim: int | None = 1024,
+    raster_dtype: np.dtype | str | None = np.float32,
     point_style: dict | None = None,
     line_style: dict | None = None,
     interval: int = 100,
     output: Path | str | None = None,
-    figsize: tuple[float, float] = (10, 8),
+    figsize: tuple[float, float] = (8, 6),
     title: str | None = None,
     fps: int = 10,
+    dpi: int = 72,
 ):
     """Animate one or more trajectories building up over a GeoTIFF raster.
 
@@ -122,7 +149,12 @@ def animate_trajectory(
     if isinstance(trajectories, _Trajectory):
         trajectories = [trajectories]
 
-    data, extent, raster_crs = _load_raster(raster, band)
+    data, extent, raster_crs = _load_raster(
+        raster,
+        band,
+        max_dim=raster_max_dim,
+        dtype=raster_dtype,
+    )
 
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -176,8 +208,8 @@ def animate_trajectory(
     if output is not None:
         output = Path(output)
         if output.suffix == ".gif":
-            anim.save(output, writer="pillow", fps=fps)
+            anim.save(output, writer="pillow", fps=fps, dpi=dpi)
         else:
-            anim.save(output, fps=fps)
+            anim.save(output, fps=fps, dpi=dpi)
 
     return anim
