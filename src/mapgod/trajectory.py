@@ -65,6 +65,7 @@ def _save_animation(fig, update_fn, anim, n_frames: int, output: Path, *, fps: i
     """Save animation using imageio-ffmpeg when available, falling back to Pillow."""
     try:
         import importlib.util
+        import io
 
         import imageio
 
@@ -74,10 +75,13 @@ def _save_animation(fig, update_fn, anim, n_frames: int, output: Path, *, fps: i
         frames = []
         for i in range(n_frames):
             update_fn(i)
-            fig.canvas.draw()
-            buf = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
-            w, h = fig.canvas.get_width_height()
-            frames.append(buf.reshape(h, w, 4)[..., :3])
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", dpi=dpi)
+            buf.seek(0)
+            frame = imageio.imread(buf)
+            if frame.ndim == 3 and frame.shape[2] == 4:
+                frame = frame[..., :3]
+            frames.append(frame)
             print(f"\r  Rendering frame {i + 1}/{n_frames}", end="", flush=True)
 
         print(f"\n  Writing {n_frames} frames with imageio...")
