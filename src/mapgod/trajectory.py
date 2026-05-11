@@ -76,7 +76,7 @@ def _save_animation(fig, ax, update_fn, anim, n_frames: int, output: Path, *, fp
 
         with imageio.get_writer(str(output), fps=fps, macro_block_size=1) as writer:
             for i in range(n_frames):
-                artists = update_fn(i)
+                artists = update_fn(i) or []
                 fig.canvas.restore_region(bg)
                 for artist in artists:
                     ax.draw_artist(artist)
