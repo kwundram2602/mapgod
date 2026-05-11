@@ -61,8 +61,23 @@ def _color_cycle() -> list[str]:
     return [p["color"] for p in plt.rcParams["axes.prop_cycle"]]
 
 
-def _save_animation(fig, ax, update_fn, anim, n_frames: int, output: Path, *, fps: int, dpi: int) -> None:
-    """Save animation using imageio-ffmpeg when available, falling back to Pillow."""
+def _save_animation(
+    fig,
+    ax,
+    artist_groups: list,
+    frame_indices: list[int],
+    anim,
+    n_frames: int,
+    output: Path,
+    *,
+    fps: int,
+    dpi: int,
+) -> None:
+    """Save animation using imageio-ffmpeg when available, falling back to Pillow.
+
+    Uses incremental segment baking: each frame draws only the new path segment
+    into the cached background (O(1) per frame regardless of trajectory length).
+    """
     try:
         import importlib.util
 
@@ -73,13 +88,34 @@ def _save_animation(fig, ax, update_fn, anim, n_frames: int, output: Path, *, fp
 
         fig.canvas.draw()
         bg = fig.canvas.copy_from_bbox(fig.bbox)
+        prev_ns = [0] * len(artist_groups)
 
         with imageio.get_writer(str(output), fps=fps, macro_block_size=1) as writer:
             for i in range(n_frames):
-                artists = update_fn(i) or []
+                actual_frame = frame_indices[i]
+
+                # Restore accumulated trail background
                 fig.canvas.restore_region(bg)
-                for artist in artists:
-                    ax.draw_artist(artist)
+
+                # Draw only the new segment for each trajectory
+                for j, (line, marker, xs, ys) in enumerate(artist_groups):
+                    n = min(actual_frame + 1, len(xs))
+                    prev_n = prev_ns[j]
+                    if n >= 2 and n > prev_n:
+                        start = max(0, prev_n - 1)
+                        line.set_data(xs[start:n], ys[start:n])
+                        ax.draw_artist(line)
+                    prev_ns[j] = n
+
+                # Bake new segments into background so next frame starts from here
+                bg = fig.canvas.copy_from_bbox(fig.bbox)
+
+                # Draw current-position markers on top (not baked in — they move)
+                for j, (line, marker, xs, ys) in enumerate(artist_groups):
+                    n = prev_ns[j]
+                    marker.set_data([xs[n - 1]], [ys[n - 1]])
+                    ax.draw_artist(marker)
+
                 fig.canvas.blit(fig.bbox)
                 w, h = fig.canvas.get_width_height()
                 buf = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8).reshape(h, w, 4)
@@ -252,7 +288,7 @@ def animate_trajectory(
     if output is not None:
         output = Path(output)
         print(f"Saving animation to {output} (fps={fps}, dpi={dpi}, {n_frames} frames)...")
-        _save_animation(fig, ax, _update, None, n_frames, output, fps=fps, dpi=dpi)
+        _save_animation(fig, ax, artist_groups, frame_indices, None, n_frames, output, fps=fps, dpi=dpi)
         print(f"\nSaved: {output}")
 
     anim = FuncAnimation(fig, _update, frames=n_frames, interval=interval, blit=True)
