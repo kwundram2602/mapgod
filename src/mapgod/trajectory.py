@@ -61,6 +61,40 @@ def _color_cycle() -> list[str]:
     return [p["color"] for p in plt.rcParams["axes.prop_cycle"]]
 
 
+def _save_animation(fig, update_fn, anim, n_frames: int, output: Path, *, fps: int, dpi: int) -> None:
+    """Save animation using imageio-ffmpeg when available, falling back to Pillow."""
+    try:
+        import importlib.util
+
+        import imageio
+
+        if importlib.util.find_spec("imageio_ffmpeg") is None:
+            raise ImportError("imageio_ffmpeg not installed")
+
+        frames = []
+        for i in range(n_frames):
+            update_fn(i)
+            fig.canvas.draw()
+            buf = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            w, h = fig.canvas.get_width_height()
+            frames.append(buf.reshape(h, w, 3))
+            print(f"\r  Rendering frame {i + 1}/{n_frames}", end="", flush=True)
+
+        print(f"\n  Writing {n_frames} frames with imageio...")
+        imageio.mimwrite(str(output), frames, fps=fps)
+
+    except ImportError:
+        print("  imageio-ffmpeg not found — falling back to Pillow (slow). Install with: pip install imageio-ffmpeg")
+
+        def _progress(current_frame: int, total_frames: int) -> None:
+            print(f"\r  Frame {current_frame + 1}/{total_frames}", end="", flush=True)
+
+        if output.suffix == ".gif":
+            anim.save(output, writer="pillow", fps=fps, dpi=dpi, progress_callback=_progress)
+        else:
+            anim.save(output, fps=fps, dpi=dpi, progress_callback=_progress)
+
+
 def plot_trajectory(
     raster: Path | str,
     trajectories: Trajectory | list[Trajectory],
@@ -212,14 +246,7 @@ def animate_trajectory(
     if output is not None:
         output = Path(output)
         print(f"Saving animation to {output} (fps={fps}, dpi={dpi}, {n_frames} frames)...")
-
-        def _progress(current_frame: int, total_frames: int) -> None:
-            print(f"\r  Frame {current_frame + 1}/{total_frames}", end="", flush=True)
-
-        if output.suffix == ".gif":
-            anim.save(output, writer="pillow", fps=fps, dpi=dpi, progress_callback=_progress)
-        else:
-            anim.save(output, fps=fps, dpi=dpi, progress_callback=_progress)
+        _save_animation(fig, _update, anim, n_frames, output, fps=fps, dpi=dpi)
         print(f"\nSaved: {output}")
 
     return anim
