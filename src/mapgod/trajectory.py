@@ -71,17 +71,15 @@ def _save_animation(fig, update_fn, anim, n_frames: int, output: Path, *, fps: i
         if importlib.util.find_spec("imageio_ffmpeg") is None:
             raise ImportError("imageio_ffmpeg not installed")
 
-        frames = []
-        for i in range(n_frames):
-            update_fn(i)
-            fig.canvas.draw()
-            w, h = fig.canvas.get_width_height()
-            buf = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8).reshape(h, w, 4)
-            frames.append(buf[..., :3].copy())
-            print(f"\r  Rendering frame {i + 1}/{n_frames}", end="", flush=True)
-
-        print(f"\n  Writing {n_frames} frames with imageio...")
-        imageio.mimwrite(str(output), frames, fps=fps)
+        with imageio.get_writer(str(output), fps=fps) as writer:
+            for i in range(n_frames):
+                update_fn(i)
+                fig.canvas.draw()
+                w, h = fig.canvas.get_width_height()
+                buf = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8).reshape(h, w, 4)
+                writer.append_data(buf[..., :3].copy())
+                print(f"\r  Rendering frame {i + 1}/{n_frames}", end="", flush=True)
+        print()
 
     except ImportError:
         print("  imageio-ffmpeg not found — falling back to Pillow (slow). Install with: pip install imageio-ffmpeg")
