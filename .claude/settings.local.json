@@ -5,7 +5,9 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Skill(uv-project)",
-      "Skill(uv-project:*)"
+      "Skill(uv-project:*)",
+      "Bash(.venv\\\\Scripts\\\\python.exe -c \"import imageio_ffmpeg; print\\('found:', imageio_ffmpeg.__file__\\)\")",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"import imageio_ffmpeg; print\\('OK:', imageio_ffmpeg.__file__\\)\")"
     ]
   }
 }

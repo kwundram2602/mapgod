@@ -75,9 +75,9 @@ def _save_animation(fig, update_fn, anim, n_frames: int, output: Path, *, fps: i
         for i in range(n_frames):
             update_fn(i)
             fig.canvas.draw()
-            buf = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            buf = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
             w, h = fig.canvas.get_width_height()
-            frames.append(buf.reshape(h, w, 3))
+            frames.append(buf.reshape(h, w, 4)[..., :3])
             print(f"\r  Rendering frame {i + 1}/{n_frames}", end="", flush=True)
 
         print(f"\n  Writing {n_frames} frames with imageio...")
