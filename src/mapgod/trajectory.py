@@ -61,7 +61,7 @@ def _color_cycle() -> list[str]:
     return [p["color"] for p in plt.rcParams["axes.prop_cycle"]]
 
 
-def _save_animation(fig, update_fn, anim, n_frames: int, output: Path, *, fps: int, dpi: int) -> None:
+def _save_animation(fig, ax, update_fn, anim, n_frames: int, output: Path, *, fps: int, dpi: int) -> None:
     """Save animation using imageio-ffmpeg when available, falling back to Pillow."""
     try:
         import importlib.util
@@ -71,10 +71,16 @@ def _save_animation(fig, update_fn, anim, n_frames: int, output: Path, *, fps: i
         if importlib.util.find_spec("imageio_ffmpeg") is None:
             raise ImportError("imageio_ffmpeg not installed")
 
+        fig.canvas.draw()
+        bg = fig.canvas.copy_from_bbox(fig.bbox)
+
         with imageio.get_writer(str(output), fps=fps, macro_block_size=1) as writer:
             for i in range(n_frames):
-                update_fn(i)
-                fig.canvas.draw()
+                artists = update_fn(i)
+                fig.canvas.restore_region(bg)
+                for artist in artists:
+                    ax.draw_artist(artist)
+                fig.canvas.blit(fig.bbox)
                 w, h = fig.canvas.get_width_height()
                 buf = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8).reshape(h, w, 4)
                 writer.append_data(buf[..., :3].copy())
@@ -246,7 +252,7 @@ def animate_trajectory(
     if output is not None:
         output = Path(output)
         print(f"Saving animation to {output} (fps={fps}, dpi={dpi}, {n_frames} frames)...")
-        _save_animation(fig, _update, None, n_frames, output, fps=fps, dpi=dpi)
+        _save_animation(fig, ax, _update, None, n_frames, output, fps=fps, dpi=dpi)
         print(f"\nSaved: {output}")
 
     anim = FuncAnimation(fig, _update, frames=n_frames, interval=interval, blit=True)
