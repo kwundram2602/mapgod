@@ -149,12 +149,14 @@ def animate_trajectory(
     if isinstance(trajectories, _Trajectory):
         trajectories = [trajectories]
 
+    print(f"Loading raster: {raster}")
     data, extent, raster_crs = _load_raster(
         raster,
         band,
         max_dim=raster_max_dim,
         dtype=raster_dtype,
     )
+    print(f"Raster loaded: shape={data.shape}, CRS={raster_crs}")
 
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -177,15 +179,17 @@ def animate_trajectory(
 
     colors = _color_cycle()
     all_coords: list[tuple[list[float], list[float]]] = []
+    print(f"Reprojecting {len(trajectories)} trajectory/trajectories to raster CRS...")
     for traj in trajectories:
         xs, ys = _reproject_points(traj, raster_crs)
         all_coords.append((xs, ys))
 
     n_frames = max(len(c[0]) for c in all_coords)
+    print(f"Animation: {len(all_coords)} trajectory/trajectories, {n_frames} frames total")
 
-    # Pre-create one (line, point_marker) artist pair per trajectory.
     artist_groups = []
     for i, (xs, ys) in enumerate(all_coords):
+        print(f"  Trajectory {i}: {len(xs)} points")
         color = colors[i % len(colors)]
         (line,) = ax.plot([], [], color=color, **ls)
         (marker,) = ax.plot([], [], "o", color=color, **ps)
@@ -207,9 +211,11 @@ def animate_trajectory(
 
     if output is not None:
         output = Path(output)
+        print(f"Saving animation to {output} (fps={fps}, dpi={dpi})...")
         if output.suffix == ".gif":
             anim.save(output, writer="pillow", fps=fps, dpi=dpi)
         else:
             anim.save(output, fps=fps, dpi=dpi)
+        print(f"Saved: {output}")
 
     return anim
