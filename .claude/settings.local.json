@@ -7,7 +7,12 @@
       "Skill(uv-project)",
       "Skill(uv-project:*)",
       "Bash(.venv\\\\Scripts\\\\python.exe -c \"import imageio_ffmpeg; print\\('found:', imageio_ffmpeg.__file__\\)\")",
-      "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"import imageio_ffmpeg; print\\('OK:', imageio_ffmpeg.__file__\\)\")"
+      "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"import imageio_ffmpeg; print\\('OK:', imageio_ffmpeg.__file__\\)\")",
+      "PowerShell(uv --version)",
+      "Bash(pytest tests/test_trajectory.py::test_animate_trajectory_saves_gif_imageio -v)",
+      "Bash(where python *)",
+      "Bash(.venv\\\\Scripts\\\\python.exe --version)",
+      "Bash(pytest tests/test_trajectory.py -v --tb=short)"
     ]
   }
 }
