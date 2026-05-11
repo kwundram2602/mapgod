@@ -211,11 +211,15 @@ def animate_trajectory(
 
     if output is not None:
         output = Path(output)
-        print(f"Saving animation to {output} (fps={fps}, dpi={dpi})...")
+        print(f"Saving animation to {output} (fps={fps}, dpi={dpi}, {n_frames} frames)...")
+
+        def _progress(current_frame: int, total_frames: int) -> None:
+            print(f"\r  Frame {current_frame + 1}/{total_frames}", end="", flush=True)
+
         if output.suffix == ".gif":
-            anim.save(output, writer="pillow", fps=fps, dpi=dpi)
+            anim.save(output, writer="pillow", fps=fps, dpi=dpi, progress_callback=_progress)
         else:
-            anim.save(output, fps=fps, dpi=dpi)
-        print(f"Saved: {output}")
+            anim.save(output, fps=fps, dpi=dpi, progress_callback=_progress)
+        print(f"\nSaved: {output}")
 
     return anim
