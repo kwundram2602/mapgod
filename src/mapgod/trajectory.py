@@ -65,7 +65,6 @@ def _save_animation(fig, update_fn, anim, n_frames: int, output: Path, *, fps: i
     """Save animation using imageio-ffmpeg when available, falling back to Pillow."""
     try:
         import importlib.util
-        import io
 
         import imageio
 
@@ -75,13 +74,10 @@ def _save_animation(fig, update_fn, anim, n_frames: int, output: Path, *, fps: i
         frames = []
         for i in range(n_frames):
             update_fn(i)
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png", dpi=dpi)
-            buf.seek(0)
-            frame = imageio.imread(buf)
-            if frame.ndim == 3 and frame.shape[2] == 4:
-                frame = frame[..., :3]
-            frames.append(frame)
+            fig.canvas.draw()
+            w, h = fig.canvas.get_width_height()
+            buf = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8).reshape(h, w, 4)
+            frames.append(buf[..., :3].copy())
             print(f"\r  Rendering frame {i + 1}/{n_frames}", end="", flush=True)
 
         print(f"\n  Writing {n_frames} frames with imageio...")
@@ -249,12 +245,11 @@ def animate_trajectory(
             updated.extend([line, marker])
         return updated
 
-    anim = FuncAnimation(fig, _update, frames=n_frames, interval=interval, blit=True)
-
     if output is not None:
         output = Path(output)
         print(f"Saving animation to {output} (fps={fps}, dpi={dpi}, {n_frames} frames)...")
-        _save_animation(fig, _update, anim, n_frames, output, fps=fps, dpi=dpi)
+        _save_animation(fig, _update, None, n_frames, output, fps=fps, dpi=dpi)
         print(f"\nSaved: {output}")
 
+    anim = FuncAnimation(fig, _update, frames=n_frames, interval=interval, blit=True)
     return anim
