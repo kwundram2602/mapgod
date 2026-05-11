@@ -71,7 +71,7 @@ def _save_animation(fig, update_fn, anim, n_frames: int, output: Path, *, fps: i
         if importlib.util.find_spec("imageio_ffmpeg") is None:
             raise ImportError("imageio_ffmpeg not installed")
 
-        with imageio.get_writer(str(output), fps=fps) as writer:
+        with imageio.get_writer(str(output), fps=fps, macro_block_size=1) as writer:
             for i in range(n_frames):
                 update_fn(i)
                 fig.canvas.draw()
