@@ -108,3 +108,43 @@ def test_public_exports():
     import mapgod
     assert hasattr(mapgod, "plot_trajectory")
     assert hasattr(mapgod, "animate_trajectory")
+
+
+def test_animate_trajectory_saves_gif_imageio(tmp_path, monkeypatch):
+    """Blit path via imageio produces a valid multi-frame GIF."""
+    import types
+    from mapgod.trajectory import animate_trajectory
+
+    # Build a minimal imageio stub so the imageio path is taken
+    frames_captured = []
+
+    class _FakeWriter:
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def append_data(self, frame): frames_captured.append(frame)
+
+    fake_imageio = types.ModuleType("imageio")
+    fake_imageio.get_writer = lambda *a, **kw: _FakeWriter()
+
+    import importlib.util as _ilu
+    real_find_spec = _ilu.find_spec
+
+    def _patched_find_spec(name):
+        if name == "imageio_ffmpeg":
+            # Return a truthy spec so the imageio branch is taken
+            return object()
+        return real_find_spec(name)
+
+    monkeypatch.setattr(_ilu, "find_spec", _patched_find_spec)
+    monkeypatch.setitem(__import__("sys").modules, "imageio", fake_imageio)
+
+    raster = _write_raster(tmp_path)
+    traj = _make_trajectory()
+    output = tmp_path / "blit_test.mp4"
+    animate_trajectory(raster, traj, output=output, fps=5)
+
+    # 3 points in trajectory → 3 frames
+    assert len(frames_captured) == 3
+    h, w, c = frames_captured[0].shape
+    assert c == 3
+    assert h > 0 and w > 0
