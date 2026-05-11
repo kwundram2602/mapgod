@@ -174,6 +174,7 @@ def animate_trajectory(
     title: str | None = None,
     fps: int = 10,
     dpi: int = 72,
+    nth_frame: int = 1,
 ):
     """Animate one or more trajectories building up over a GeoTIFF raster.
 
@@ -222,8 +223,10 @@ def animate_trajectory(
         xs, ys = _reproject_points(traj, raster_crs)
         all_coords.append((xs, ys))
 
-    n_frames = max(len(c[0]) for c in all_coords)
-    print(f"Animation: {len(all_coords)} trajectory/trajectories, {n_frames} frames total")
+    n_frames_full = max(len(c[0]) for c in all_coords)
+    frame_indices = list(range(0, n_frames_full, nth_frame))
+    n_frames = len(frame_indices)
+    print(f"Animation: {len(all_coords)} trajectory/trajectories, {n_frames} frames total (nth_frame={nth_frame})")
 
     artist_groups = []
     for i, (xs, ys) in enumerate(all_coords):
@@ -235,8 +238,9 @@ def animate_trajectory(
 
     def _update(frame: int):
         updated = []
+        actual_frame = frame_indices[frame]
         for line, marker, xs, ys in artist_groups:
-            n = min(frame + 1, len(xs))
+            n = min(actual_frame + 1, len(xs))
             if n >= 2:
                 line.set_data(xs[:n], ys[:n])
             else:
